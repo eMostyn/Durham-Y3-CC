@@ -1,7 +1,8 @@
 import numpy as np
-import math
 import os
 import random
+import math
+import time
 
 
 def point_addition(P, Q, p, a):
@@ -34,17 +35,25 @@ def mult(p, n, P, a):
         multiplied = double(P, p, a)
         for i in range(n - 2):
             multiplied = point_addition(multiplied, P, p, a)
-    return multiplied
+        return multiplied
+    else:
+        return ValueError
 
 
-def inv(n, q):
-    for i in range(q):
-        if (n * i) % q == 1:
-            return i
+def inv(n, p):
+    # for i in range(q):
+    #     if (n * i) % q == 1:
+    #         return i
+
+    return pow(n, -1, p)
 
 
 def add(p, a, b):
     return (a + b) % p
+
+
+def sub(p, a, b):
+    return (b - a) % p
 
 
 def multiply(p, a, b):
@@ -81,9 +90,9 @@ def generate_points(p, a, b):
     return points
 
 
-def H(x, points, partititon_1, partition_2):
-    partition_1_num = points[partititon_1][0]
-    partition_2_num = points[partition_2][0]
+def H(x, order):
+    partition_1_num = order // 3
+    partition_2_num = (2 * order) // 3
     if x < partition_1_num:
         return 0
     elif x < partition_2_num:
@@ -91,12 +100,7 @@ def H(x, points, partititon_1, partition_2):
     return 2
 
 
-def F(X, x, As, Bs, P, p, a):
-    temp = point_addition(X, (mult(p, As[x], P, a)), p, a)
-    return point_addition(temp, mult(p, Bs[x], P, a), p, a)
-
-
-def F2(X, x, P, p, a, c, d, n):
+def F2(X, x, P, Q, p, a, c, d, n):
     if x == 0:
         return point_addition(X, P, p, a), add(n, c, 1), d
     elif x == 1:
@@ -105,82 +109,43 @@ def F2(X, x, P, p, a, c, d, n):
         return point_addition(X, Q, p, a), c, add(n, d, 1)
 
 
-def pol_rho(p, a, b, P, n, Q):
-    if os.path.exists("points.txt"):
-        points = np.loadtxt("points.txt", dtype="int")
-    else:
-        points = generate_points(p, a, b)
-        np.savetxt("points.txt", points, fmt="%d")
-    num_points = len(points)
-    partition_1 = num_points // 3
-    partition_2 = (2 * num_points) // 3
-    s_1 = points[:partition_1]
-    s_2 = points[partition_1:partition_2]
-    s_3 = points[partition_2:]
-    # print(point_addition(mult(p, 753, P, a), mult(p, 3598, Q, a), p, a))
-
-    As = [random.randint(0, n - 1) for x in range(3)]
-    print(As)
-    Bs = [random.randint(0, n - 1) for x in range(3)]
-    print(Bs)
-
-    # j = H(1452, points, partition_1, partition_2)
-    # LHS = point_addition(mult(p, 3025, P, a), mult(p, 13260, Q, a), p)
-    c = 5
-    d = 9
-    c_dash = 0
-    d_dash = 0
-    X = point_addition(mult(p, c, P, a), mult(p, d, Q, a), p, a)
-    j = H(X[0], points, partition_1, partition_2)
-    X_dash = F2(X, j, As, Bs, P, p, a)
-    print(X, X_dash)
-
-    while X != X_dash:
-        j = H(X[0], points, partition_1, partition_2)
-        X = F(X, j, As, Bs, P, p, a)
-        c_new, d_new = As[j], Bs[j]
-        c = add(p, c, c_new)
-        d = add(p, d, d_new)
-        j_x_dash = H(X_dash[0], points, partition_1, partition_2)
-        c_dash_new, d_dash_new = As[j_x_dash], Bs[j_x_dash]
-        X_dash = F(X_dash, j_x_dash, As, Bs, P, p, a)
-        c_dash = add(p, c, c_dash_new)
-        d_dash = add(p, d, d_dash_new)
-        j_x_dash = H(X_dash[0], points, partition_1, partition_2)
-        c_dash_new, d_dash_new = As[j_x_dash], Bs[j_x_dash]
-        X_dash = F(X_dash, j_x_dash, As, Bs, P, p, a)
-        c_dash = add(p, c, c_dash_new)
-        d_dash = add(p, d, d_dash_new)
-        print(X, X_dash)
-
-        # C = 5 D=9
-    return X, X_dash, c, d, c_dash, d_dash
-
-
 def pol_rho2(p, a, b, P, n, Q):
-    if os.path.exists("points.txt"):
-        points = np.loadtxt("points.txt", dtype="int")
-    else:
-        points = generate_points(p, a, b)
-        np.savetxt("points.txt", points, fmt="%d")
-    num_points = len(points)
-    partition_1 = num_points // 3
-    partition_2 = (2 * num_points) // 3
-    c = 22
-    d = 10
+    c = 2
+    d = 87
     X = point_addition(mult(p, c, P, a), mult(p, d, Q, a), p, a)
 
     Xs = [[X, c, d]]
     found = False
     while not found:
-        j = H(X[0], points, partition_1, partition_2)
-        X, c, d = F2(X, j, P, p, a, c, d, n)
+        j = H(X[0], n)
+        X, c, d = F2(X, j, P, Q, p, a, c, d, n)
         unzipped = list(zip(*Xs))
         if X in unzipped[0]:
             index = unzipped[0].index(X)
-            return Xs[index][1], Xs[index][2], c, d
+            found = True
+            c, d, c_dash, d_dash = Xs[index][1], Xs[index][2], c, d
         else:
             Xs.append([X, c, d])
+    print(c, d, c_dash, d_dash)
+    return c, d, c_dash, d_dash
+
+
+def get_l(c, d, c_dash, d_dash, n, p, P, Q):
+    gcd = math.gcd(d_dash - d, n)
+    if gcd == 1:
+        l = sub(n, c, c_dash) * (inv(sub(n, d_dash, d), n)) % n
+    elif gcd > 1:
+        for i in range(1, gcd + 1):
+            new_mod = int((n * i) / gcd)
+            try:
+                l = (
+                    sub(new_mod, c, c_dash)
+                    * (inv(sub(new_mod, d_dash, d), new_mod))
+                    % new_mod
+                )
+            except:
+                pass
+    return l
 
 
 def print_output(parameters, c, d, c_dash, d_dash):
@@ -197,6 +162,7 @@ def print_output(parameters, c, d, c_dash, d_dash):
 
 
 def check_valid(P, Q, c, d, c_dash, d_dash, a, p):
+    print(P, Q)
     print("LHS: ", point_addition(mult(p, c, P, a), mult(p, d, Q, a), p, a))
     print("RHS: ", point_addition(mult(p, c_dash, P, a), mult(p, d_dash, Q, a), p, a))
 
@@ -216,7 +182,9 @@ n = int(parameters["n"])
 Q = parameters["Q"].strip("()").split(", ")
 Q = [int(x) for x in Q]
 
+start = time.time()
 c, d, c_dash, d_dash = pol_rho2(p, a, b, P, n, Q)
-print(c, d, c_dash, d_dash)
-print(check_valid(P, Q, c, d, c_dash, d_dash, a, p))
-print_output(parameters, c, d, c_dash, c_dash)
+print("Found collision: ", time.time() - start)
+
+print(get_l(c, d, c_dash, d_dash, n, p, P, Q))
+print("Found l: ", time.time() - start)
